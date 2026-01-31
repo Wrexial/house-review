@@ -1,0 +1,9 @@
+## Interface: 120000
+## Title: House Review
+## Notes: Allows players to review player housing.
+## Author: Your Name
+## Version: 0.1
+## SavedVariables: HouseReviewDB
+
+HouseReview.xml
+HouseReview.lua

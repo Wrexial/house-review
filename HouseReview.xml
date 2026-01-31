@@ -1,0 +1,183 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <Frame name="HouseReviewFrame" parent="UIParent" hidden="true" movable="true" enableMouse="true" inherits="BackdropTemplate" frameStrata="FULLSCREEN_DIALOG">
+        <Size x="400" y="500"/>
+        <Anchors>
+            <Anchor point="CENTER"/>
+        </Anchors>
+
+        <Layers>
+            <Layer level="ARTWORK">
+                <FontString name="$parentTitle" inherits="GameFontNormalLarge" text="House Review">
+                    <Anchors>
+                        <Anchor point="TOP" relativeTo="$parent" relativePoint="TOP" x="0" y="-14"/>
+                    </Anchors>
+                </FontString>
+                <FontString name="$parentReadLabel" inherits="GameFontNormal" text="Current Reviews:">
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT" x="25" y="-45"/>
+                    </Anchors>
+                </FontString>
+                <FontString name="$parentWriteLabel" inherits="GameFontNormal" text="Write a Review:">
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT" x="25" y="-275"/>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Frames>
+            <ScrollFrame name="$parentScrollFrame" inherits="UIPanelScrollFrameTemplate">
+                <Size x="360" y="200"/>
+                <Anchors>
+                    <Anchor point="TOP" relativeTo="$parent" relativePoint="TOP" x="0" y="-65"/>
+                </Anchors>
+                <ScrollChild>
+                    <Frame name="$parentReviewsContainer">
+                        <Size x="360" y="200"/>
+                        <Anchors>
+                            <Anchor point="TOPLEFT"/>
+                        </Anchors>
+                    </Frame>
+                </ScrollChild>
+            </ScrollFrame>
+            <EditBox name="$parentEditBox" inherits="BackdropTemplate" multiLine="true" letters="500" autoFocus="false">
+                <Size x="360" y="100"/>
+                <Anchors>
+                    <Anchor point="TOP" relativeTo="$parentScrollFrame" relativePoint="BOTTOM" x="0" y="-35"/>
+                </Anchors>
+                <Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+                    <TileSize val="16"/>
+                    <EdgeSize val="16"/>
+                    <BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+                </Backdrop>
+                <TextInsets left="8" right="8" top="8" bottom="8"/>
+                <FontString inherits="ChatFontNormal"/>
+                <Scripts>
+                    <OnLoad>
+                        self:SetBackdrop({
+                            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+                            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                            tile = true, tileSize = 16, edgeSize = 16,
+                            insets = { left = 5, right = 5, top = 5, bottom = 5 }
+                        })
+                        self:SetBackdropColor(0, 0, 0, 0.8)
+                    </OnLoad>
+                    <OnEscapePressed>
+                        self:ClearFocus()
+                    </OnEscapePressed>
+                </Scripts>
+            </EditBox>
+            <Button name="$parentSubmitButton" inherits="UIPanelButtonTemplate" text="Submit">
+                <Size x="100" y="25"/>
+                <Anchors>
+                    <Anchor point="TOP" relativeTo="$parentEditBox" relativePoint="BOTTOM" x="0" y="-10"/>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        local location = HouseReviewFrame.selectedPlot
+                        local editBox = HouseReviewFrameEditBox
+                        local text = editBox:GetText()
+                        
+                        if not location then
+                            print("HouseReview Error: No plot selected.")
+                            return
+                        end
+
+                        if not text or not text:match("%S") then
+                            print("HouseReview Error: Please write some text before submitting.")
+                            return
+                        end
+
+                        if HouseReviewDB[location] == nil then
+                            HouseReviewDB[location] = {}
+                        end
+                        
+                        -- Store as a table with metadata
+                        local entry = {
+                            text = text,
+                            author = UnitName("player"),
+                            date = date("%d/%m/%y")
+                        }
+                        table.insert(HouseReviewDB[location], entry)
+                        
+                        print("Review submitted for " .. location)
+                        
+                        -- Refresh the display list
+                        if HouseReview_UpdateReviewList then
+                            HouseReview_UpdateReviewList()
+                        end
+                        
+                        editBox:SetText("")
+                        editBox:ClearFocus()
+                        
+                        -- Update UI State
+                        HouseReviewFrameSubmitButton:Hide()
+                        HouseReviewFrameDeleteButton:Show()
+                        editBox:SetText("|cFF888888You have already reviewed this plot.|r")
+                        editBox:SetEnabled(false)
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <Button name="$parentDeleteButton" inherits="UIPanelButtonTemplate" text="Remove Review" hidden="true">
+                <Size x="120" y="25"/>
+                <Anchors>
+                    <Anchor point="TOP" relativeTo="$parentEditBox" relativePoint="BOTTOM" x="0" y="-10"/>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        local location = HouseReviewFrame.selectedPlot
+                        if not location or not HouseReviewDB[location] then return end
+
+                        local playerName = UnitName("player")
+                        local indexToRemove = nil
+
+                        for i, entry in ipairs(HouseReviewDB[location]) do
+                            if type(entry) == "table" and entry.author == playerName then
+                                indexToRemove = i
+                                break
+                            end
+                        end
+
+                        if indexToRemove then
+                            table.remove(HouseReviewDB[location], indexToRemove)
+                            print("Review removed for " .. location)
+                            
+                            -- Refresh the display list
+                            if HouseReview_UpdateReviewList then
+                                HouseReview_UpdateReviewList()
+                            end
+                            
+                            -- Update UI State
+                            self:Hide()
+                            HouseReviewFrameSubmitButton:Show()
+                            HouseReviewFrameEditBox:SetText("")
+                            HouseReviewFrameEditBox:SetEnabled(true)
+                        end
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeTo="$parent" relativePoint="TOPRIGHT" x="-3" y="-3"/>
+                </Anchors>
+            </Button>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                self:SetBackdrop({
+                    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                    tile = true, tileSize = 32, edgeSize = 32,
+                    insets = { left = 11, right = 12, top = 12, bottom = 11 }
+                })
+                self:RegisterForDrag("LeftButton")
+            </OnLoad>
+            <OnDragStart>
+                self:StartMoving()
+            </OnDragStart>
+            <OnDragStop>
+                self:StopMovingOrSizing()
+            </OnDragStop>
+        </Scripts>
+    </Frame>
+</Ui>
