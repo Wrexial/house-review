@@ -45,11 +45,6 @@
                 <Anchors>
                     <Anchor point="TOP" relativeTo="$parentScrollFrame" relativePoint="BOTTOM" x="0" y="-35"/>
                 </Anchors>
-                <Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
-                    <TileSize val="16"/>
-                    <EdgeSize val="16"/>
-                    <BackgroundInsets left="5" right="5" top="5" bottom="5"/>
-                </Backdrop>
                 <TextInsets left="8" right="8" top="8" bottom="8"/>
                 <FontString inherits="ChatFontNormal"/>
                 <Scripts>
@@ -74,6 +69,16 @@
                 </Anchors>
                 <Scripts>
                     <OnClick>
+                        local neighborhoodID
+                        if C_Housing and C_Housing.GetCurrentNeighborhood then
+                            neighborhoodID = C_Housing.GetCurrentNeighborhood()
+                        end
+                        
+                        if not neighborhoodID then
+                            print("HouseReview Error: Could not determine current neighborhood.")
+                            return
+                        end
+
                         local location = HouseReviewFrame.selectedPlot
                         local editBox = HouseReviewFrameEditBox
                         local text = editBox:GetText()
@@ -88,17 +93,31 @@
                             return
                         end
 
-                        if HouseReviewDB[location] == nil then
-                            HouseReviewDB[location] = {}
+                        -- Ensure neighborhood table exists
+                        if HouseReviewDB[neighborhoodID] == nil then
+                            HouseReviewDB[neighborhoodID] = {}
+                        end
+
+                        if HouseReviewDB[neighborhoodID][location] == nil then
+                            HouseReviewDB[neighborhoodID][location] = {}
                         end
                         
                         -- Store as a table with metadata
+                        local playerName = UnitName("player")
+                        local bnetAccountID
+                        if C_BattleNet and C_BattleNet.GetAccountInfo then
+                            _, _, bnetAccountID = C_BattleNet.GetAccountInfo()
+                        end
+                        local playerAccountID = bnetAccountID or UnitGUID("player") -- Fallback to GUID if bnet ID is unavailable
+                        
                         local entry = {
                             text = text,
-                            author = UnitName("player"),
-                            date = date("%d/%m/%y")
+                            author = playerName,
+                            authorGUID = playerAccountID,
+                            date = date("%d/%m/%y"),
+                            likedBy = { [playerAccountID] = true } -- Auto-like by the author's account
                         }
-                        table.insert(HouseReviewDB[location], entry)
+                        table.insert(HouseReviewDB[neighborhoodID][location], entry)
                         
                         print("Review submitted for " .. location)
                         
@@ -125,21 +144,26 @@
                 </Anchors>
                 <Scripts>
                     <OnClick>
+                        local neighborhoodID = HouseReviewFrame.selectedNeighborhood
                         local location = HouseReviewFrame.selectedPlot
-                        if not location or not HouseReviewDB[location] then return end
+                        if not neighborhoodID or not location or not HouseReviewDB[neighborhoodID] or not HouseReviewDB[neighborhoodID][location] then return end
 
-                        local playerName = UnitName("player")
+                        local bnetAccountID
+                        if C_BattleNet and C_BattleNet.GetAccountInfo then
+                            _, _, bnetAccountID = C_BattleNet.GetAccountInfo()
+                        end
+                        local playerAccountID = bnetAccountID or UnitGUID("player")
                         local indexToRemove = nil
 
-                        for i, entry in ipairs(HouseReviewDB[location]) do
-                            if type(entry) == "table" and entry.author == playerName then
+                        for i, entry in ipairs(HouseReviewDB[neighborhoodID][location]) do
+                            if type(entry) == "table" and entry.authorGUID == playerAccountID then
                                 indexToRemove = i
                                 break
                             end
                         end
 
                         if indexToRemove then
-                            table.remove(HouseReviewDB[location], indexToRemove)
+                            table.remove(HouseReviewDB[neighborhoodID][location], indexToRemove)
                             print("Review removed for " .. location)
                             
                             -- Refresh the display list
@@ -171,6 +195,12 @@
                     insets = { left = 11, right = 12, top = 12, bottom = 11 }
                 })
                 self:RegisterForDrag("LeftButton")
+                self:EnableKeyboard(true)
+                self:SetScript("OnKeyDown", function(self, key)
+                    if key == "ESCAPE" then
+                        self:Hide()
+                    end
+                end)
             </OnLoad>
             <OnDragStart>
                 self:StartMoving()
