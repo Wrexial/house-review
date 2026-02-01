@@ -11,3 +11,4 @@ Reviews.lua
 Map.lua
 Debug.lua
 MinimapButton.lua
+Comms.lua

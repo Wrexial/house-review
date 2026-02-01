@@ -16,6 +16,9 @@ SafeRegisterEvent(eventFrame, "HOUSING_NEIGHBORHOOD_LIST_CHANGED")
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "HouseReview" then
         HouseReviewDB = HouseReviewDB or {}
+        if HouseReview.Comms and HouseReview.Comms.Init then
+            HouseReview.Comms.Init()
+        end
         print("HouseReview addon loaded. Use /hr or /housereview to show/hide the map.")
     elseif event == "HOUSING_NEIGHBORHOOD_MAP_DATA_UPDATED" or event == "HOUSING_NEIGHBORHOOD_LIST_CHANGED" then
         if HouseReviewMapFrame and HouseReviewMapFrame:IsShown() then

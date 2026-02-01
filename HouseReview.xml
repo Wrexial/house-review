@@ -116,6 +116,16 @@
                             likedBy = { [playerAccountID] = true } -- Auto-like by the author's account
                         }
                         table.insert(HouseReviewDB[neighborhoodID][location], entry)
+
+                        -- Broadcast the new review to the guild
+                        if HouseReview.Comms and HouseReview.Comms.Send then
+                            local payload = {
+                                neighborhood = neighborhoodID,
+                                plot = location,
+                                review = entry
+                            }
+                            HouseReview.Comms:Send("NEW_REVIEW", payload, "GUILD")
+                        end
                         
                         print("Review submitted for " .. location)
                         

@@ -49,6 +49,13 @@ function HouseReview_UpdateReviewList()
     for _, row in ipairs(container.rows) do row:Hide() end
     
     local reviews = (HouseReviewDB[neighborhoodID] and HouseReviewDB[neighborhoodID][plotID]) or {}
+
+    -- Always request fresh data from the guild to reconcile reviews
+    if HouseReview.Comms and HouseReview.Comms.Send then
+        print("HouseReview: Requesting latest reviews from guild.")
+        local payload = { neighborhood = neighborhoodID, plot = plotID }
+        HouseReview.Comms:Send("REQ_REVIEWS", payload, "GUILD")
+    end
     
     -- Prepare display list
     local displayList = {}
