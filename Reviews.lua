@@ -39,6 +39,9 @@ function HouseReview_UpdateReviewList()
     local neighborhoodID = HouseReviewFrame.selectedNeighborhood
     local plotID = HouseReviewFrame.selectedPlot
     local container = HouseReviewFrameScrollFrameReviewsContainer
+    
+    print(string.format("|cFFFFFF00HR Debug:|r UpdateReviewList - Loading for NeighborhoodID: %s, PlotID: %s", tostring(neighborhoodID), tostring(plotID)))
+
     if not container or not plotID or not neighborhoodID then return end
     
     -- Initialize row pool

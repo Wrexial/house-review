@@ -1,4 +1,5 @@
 -- HouseReview.lua
+HouseReview = {} -- Main addon table
 
 local eventFrame = CreateFrame("Frame", "HouseReviewEventFrame", UIParent)
 eventFrame:RegisterEvent("ADDON_LOADED")

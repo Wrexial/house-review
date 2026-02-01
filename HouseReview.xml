@@ -69,19 +69,17 @@
                 </Anchors>
                 <Scripts>
                     <OnClick>
-                        local neighborhoodID
-                        if C_Housing and C_Housing.GetCurrentNeighborhood then
-                            neighborhoodID = C_Housing.GetCurrentNeighborhood()
-                        end
-                        
-                        if not neighborhoodID then
-                            print("HouseReview Error: Could not determine current neighborhood.")
-                            return
-                        end
-
+                        local neighborhoodID = HouseReviewFrame.selectedNeighborhood
                         local location = HouseReviewFrame.selectedPlot
                         local editBox = HouseReviewFrameEditBox
                         local text = editBox:GetText()
+
+                        print(string.format("|cFFFFFF00HR Debug:|r SubmitReview - Saving for NeighborhoodID: %s, PlotID: %s", tostring(neighborhoodID), tostring(location)))
+
+                        if not neighborhoodID then
+                            print("HouseReview Error: No neighborhood selected.")
+                            return
+                        end
                         
                         if not location then
                             print("HouseReview Error: No plot selected.")

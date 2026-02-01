@@ -5,48 +5,30 @@ SLASH_HOUSEREVIEWDEBUG1 = "/hrdebug"
 SlashCmdList["HOUSEREVIEWDEBUG"] = function(msg)
     print("|cFFFFFF00HouseReview Debug:|r")
     
-    -- Check C_Housing API for neighborhood name
-    if C_Housing and C_Housing.GetCurrentNeighborhood then
-        print(" - C_Housing: |cFF00FF00FOUND|r")
-        local neighborhoodID = C_Housing.GetCurrentNeighborhood()
+    -- Check C_Housing API for neighborhood ID
+    if C_Housing and C_Housing.GetCurrentNeighborhoodGUID then
+        print(" - C_Housing.GetCurrentNeighborhoodGUID: |cFF00FF00FOUND|r")
+        local neighborhoodID = C_Housing.GetCurrentNeighborhoodGUID()
         if neighborhoodID then
             print("   - Current Neighborhood ID: " .. tostring(neighborhoodID))
-            if C_Housing.GetNeighborhoodInfo then
-                local info = C_Housing.GetNeighborhoodInfo(neighborhoodID)
-                if type(info) == "table" then
-                    print("   - C_Housing.GetNeighborhoodInfo returned:")
-                    for k, v in pairs(info) do
-                        print(string.format("     - %s: %s", tostring(k), tostring(v)))
-                    end
-                else
-                    print("   - C_Housing.GetNeighborhoodInfo did not return a table.")
-                end
+
+            if C_Housing.GetUIMapIDForNeighborhood then
+                local mapID = C_Housing.GetUIMapIDForNeighborhood(neighborhoodID)
+                print("   - C_Housing.GetUIMapIDForNeighborhood returned Map ID: " .. tostring(mapID))
             else
-                print("   - C_Housing.GetNeighborhoodInfo: |cFFFF0000MISSING|r")
+                print("   - C_Housing.GetUIMapIDForNeighborhood: |cFFFF0000MISSING|r")
             end
         else
-            print("   - C_Housing.GetCurrentNeighborhood: |cFFFF0000NIL|r")
+            print("   - C_Housing.GetCurrentNeighborhoodGUID: |cFFFF0000NIL|r")
         end
     else
-        print(" - C_Housing: |cFFFF0000MISSING|r")
+        print(" - C_Housing.GetCurrentNeighborhoodGUID: |cFFFF0000MISSING|r")
     end
 
     if not C_HousingNeighborhood then
         print(" - C_HousingNeighborhood: |cFFFF0000MISSING|r")
     else
         print(" - C_HousingNeighborhood: |cFF00FF00FOUND|r")
-        if C_HousingNeighborhood.RequestNeighborhoodMapData then
-            print(" - RequestNeighborhoodMapData: |cFF00FF00FOUND|r. Calling now...")
-            local success, err = pcall(C_HousingNeighborhood.RequestNeighborhoodMapData)
-            if success then
-                print("   - Call |cFF00FF00SUCCESSFUL|r")
-            else
-                print("   - Call |cFFFF0000FAILED|r: " .. tostring(err))
-            end
-        else
-            print(" - RequestNeighborhoodMapData: |cFFFF0000MISSING|r")
-        end
-
         local data = C_HousingNeighborhood.GetNeighborhoodMapData()
         if data then
             print(" - GetNeighborhoodMapData: |cFF00FF00DATA RETURNED|r")

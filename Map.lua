@@ -35,25 +35,13 @@ local closeButton = CreateFrame("Button", nil, mapFrame, "UIPanelCloseButton")
 closeButton:SetPoint("TOPRIGHT", -5, -5)
 
 function HouseReview_UpdateMap()
+    -- Use the cached neighborhood ID
+    local neighborhoodID = HouseReview.currentNeighborhoodID
+
     -- Attempt to get the Map ID for the neighborhood
     local mapID
-    if C_Map and C_Map.GetBestMapForUnit then
-        mapID = C_Map.GetBestMapForUnit("player")
-    end
-
-    -- Some builds might not have a "best" map but might be accessible through zone info
-    if not mapID and C_Map and C_Map.GetPlayerMapArtID then
-        mapID = C_Map.GetPlayerMapArtID()
-    end
-    
-    -- Final fallback if we are in a housing zone but can't get it from player
-    if not mapID and C_Housing and C_Housing.GetCurrentNeighborhood then
-        local neighborhoodID = C_Housing.GetCurrentNeighborhood()
-        if neighborhoodID then
-            -- This is a guess, the API might not exist
-            local info = C_Housing.GetNeighborhoodInfo(neighborhoodID)
-            mapID = info and info.mapID
-        end
+    if C_Housing and C_Housing.GetUIMapIDForNeighborhood then
+        mapID = C_Housing.GetUIMapIDForNeighborhood(neighborhoodID)
     end
 
     if not mapFrame.plotIcons then
@@ -119,24 +107,12 @@ function HouseReview_UpdateMap()
                         tex:SetTexture(fileID)
                         
                         -- Calculate size and position
-                        -- Real pixel size of this tile (might be smaller at edges)
-                        -- Standard tiles are 256x256, but edge tiles are truncated in the layerWidth/Height
-                        -- However, the TEXTURE itself is usually full 256x256 with empty space, 
-                        -- OR the API handles it.
-                        -- Let's assume standard full tiles for positioning logic:
-                        
-                        local thisTileWidth = tileWidth
-                        local thisTileHeight = tileHeight
-                        
-                        -- Adjust for edge cases if needed? 
-                        -- Actually, let's just use SetPoint with the scaled dimensions.
-                        -- Position in map (pixels)
                         local posX = colIndex * tileWidth
                         local posY = rowIndex * tileHeight
                         
                         tex:ClearAllPoints()
                         tex:SetPoint("TOPLEFT", mapFrame, "TOPLEFT", posX * scaleX, -posY * scaleY)
-                        tex:SetSize(thisTileWidth * scaleX, thisTileHeight * scaleY)
+                        tex:SetSize(tileWidth * scaleX, tileHeight * scaleY)
                         tex:Show()
                     end
                 end
@@ -147,15 +123,10 @@ function HouseReview_UpdateMap()
                 end
             end
         else
-            -- Fallback for simple maps without detailed layer info (e.g. some instances)
+            -- Fallback for simple maps without detailed layer info
              local layers = C_Map.GetMapArtLayerTextures(mapID, 1)
              if layers and layers[1] and #layers == 1 then
-                 -- Safe check for table vs number (some APIs return just FileIDs)
                  local isTable = type(layers[1]) == "table"
-                 
-                 -- Only attempt to render if we have a single texture or known layout, 
-                 -- otherwise we risk broken tiles.
-                 -- If it's a single texture (table or number), we can stretch it.
                  if #layers == 1 then
                     local texID = isTable and layers[1].fileDataID or layers[1]
                     
@@ -183,11 +154,6 @@ function HouseReview_UpdateMap()
         return
     end
 
-    -- Request an update in case data isn't cached
-    if C_HousingNeighborhood.RequestNeighborhoodMapData then
-        C_HousingNeighborhood.RequestNeighborhoodMapData()
-    end
-
     local neighborhoodData = C_HousingNeighborhood.GetNeighborhoodMapData()
     if not neighborhoodData and C_Housing and C_Housing.GetNeighborhoodMapData then
         neighborhoodData = C_Housing.GetNeighborhoodMapData()
@@ -206,13 +172,11 @@ function HouseReview_UpdateMap()
 
     local plots = neighborhoodData and (neighborhoodData.neighborhoodPlots or neighborhoodData.plots)
     
-    -- Fallback: Check if neighborhoodData itself is the array of plots
     if not plots and type(neighborhoodData) == "table" and #neighborhoodData > 0 then
         plots = neighborhoodData
     end
 
     if not plots then
-        -- If we just requested it, it might take a moment to arrive via event
         print("Requesting neighborhood data... Please wait.")
         return
     end
@@ -224,48 +188,40 @@ function HouseReview_UpdateMap()
         if not icon then
             icon = CreateFrame("Button", "HouseReviewPlotIcon" .. i, mapFrame)
             icon:SetSize(20, 20)
-            icon:SetFrameLevel(mapFrame:GetFrameLevel() + 10) -- Ensure it's above the map frame
+            icon:SetFrameLevel(mapFrame:GetFrameLevel() + 10)
             
-            -- Create a texture explicitly using FileDataID for reliability
-            -- 134393 is the standard Hearthstone icon
             local tex = icon:CreateTexture(nil, "ARTWORK")
             tex:SetAllPoints(icon)
             tex:SetTexture(134393) 
-            icon.texture = tex -- Store reference for coloring
+            icon.texture = tex
             
-            -- Add a highlight
             local highlight = icon:CreateTexture(nil, "HIGHLIGHT")
             highlight:SetAllPoints(icon)
             highlight:SetTexture(134393)
             highlight:SetAlpha(0.5)
             highlight:SetBlendMode("ADD")
             icon:SetHighlightTexture(highlight)
-            icon.highlight = highlight -- Store reference
+            icon.highlight = highlight
 
             mapFrame.plotIcons[i] = icon
         end
 
-        -- Ensure texture reference exists if upgrading from old frames (hot reload support)
         if not icon.texture then
              local regions = {icon:GetRegions()}
              for _, r in ipairs(regions) do
                  if r:GetDrawLayer() == "ARTWORK" then icon.texture = r; break end
              end
         end
-        -- Ensure highlight reference exists
         if not icon.highlight then
             icon.highlight = icon:GetHighlightTexture()
         end
 
-        -- Apply Coloring Logic based on ownerType
-        -- 0 = Empty, 1 = Other, 2 = Friend, 3 = Self (Account/Alt)
         local ownerType = plotInfo.ownerType or 0
         local isOwned = (ownerType > 0)
         local isPlayerHouse = (ownerType == 3)
         local isFriendHouse = (ownerType == 2)
 
         if icon.texture then
-            -- Reset highlight visibility first
             if icon.highlight then
                 icon.highlight:SetTexture(134393)
                 icon.highlight:SetBlendMode("ADD")
@@ -273,33 +229,32 @@ function HouseReview_UpdateMap()
             end
 
             if isPlayerHouse then
-                icon.texture:SetVertexColor(0, 1, 0, 1) -- Green for Player
+                icon.texture:SetVertexColor(0, 1, 0, 1)
                 icon:SetSize(20, 20)
                 if icon.highlight then 
-                    icon.highlight:SetVertexColor(0, 1, 0, 0.5) -- Green glow
+                    icon.highlight:SetVertexColor(0, 1, 0, 0.5)
                 end
             elseif isFriendHouse then
-                icon.texture:SetVertexColor(0.2, 0.6, 1, 1) -- Blue for Friend
+                icon.texture:SetVertexColor(0.2, 0.6, 1, 1)
                 icon:SetSize(20, 20)
                 if icon.highlight then 
-                    icon.highlight:SetVertexColor(0.2, 0.6, 1, 0.5) -- Blue glow
+                    icon.highlight:SetVertexColor(0.2, 0.6, 1, 0.5)
                 end
             elseif not isOwned then
-                icon.texture:SetVertexColor(0.5, 0.5, 0.5, 1) -- Grey for Empty
-                icon:SetSize(12, 12) -- Smaller for Empty
+                icon.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
+                icon:SetSize(12, 12)
                 if icon.highlight then 
-                     icon.highlight:SetAlpha(0) -- Hide highlight
+                     icon.highlight:SetAlpha(0)
                 end
             else
-                icon.texture:SetVertexColor(1, 1, 1, 1) -- White for Others
+                icon.texture:SetVertexColor(1, 1, 1, 1)
                 icon:SetSize(20, 20)
                 if icon.highlight then 
-                    icon.highlight:SetVertexColor(1, 1, 1, 0.5) -- White glow
+                    icon.highlight:SetVertexColor(1, 1, 1, 0.5)
                 end
             end
         end
 
-        -- Handle different possible position structures
         local pos = plotInfo.mapPosition or plotInfo.MapPosition or plotInfo.position or plotInfo.location or plotInfo
         if pos and pos.mapPosition and type(pos.mapPosition) == "table" then
             pos = pos.mapPosition
@@ -310,7 +265,6 @@ function HouseReview_UpdateMap()
         local x = pos.x or pos.posX or pos.mapX or pos.left or pos[1]
         local y = pos.y or pos.posY or pos.mapY or pos.top or pos[2]
 
-        -- If we still don't have it, look for any field that might be a number
         if not x or not y then
             for k, v in pairs(pos) do
                 if type(v) == "number" then
@@ -322,21 +276,17 @@ function HouseReview_UpdateMap()
         end
 
         if x and y then
-            -- Normalize coordinates if they are larger than 1 (some systems use 0-100 or map pixels)
             if x > 1 or y > 1 then
-                -- Try to detect if they need scaling; for now assume 0-1 if they are small, else maybe they are already pixels
-                -- But usually neighborhood data is 0.0 to 1.0
             end
             
-            local xPos = x * 750 + 25 -- Padding
-            local yPos = -y * 550 - 25 -- Padding
+            local xPos = x * 750 + 25
+            local yPos = -y * 550 - 25
             icon:SetPoint("TOPLEFT", xPos, yPos)
             icon:Show()
         else
             icon:Hide()
         end
 
-        -- Update tooltip data
         icon:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Plot ID: " .. (plotInfo.plotID or plotID or "N/A"))
@@ -346,20 +296,14 @@ function HouseReview_UpdateMap()
             end
             GameTooltip:Show()
         end)
-        -- ... rest of script setup ...
         icon:SetScript("OnLeave", function(self)
             GameTooltip:Hide()
         end)
         icon:SetScript("OnClick", function(self)
-            if not (plotInfo.ownerName and plotInfo.ownerName ~= "") then return end -- Ignore clicks on empty plots
+            if not (plotInfo.ownerName and plotInfo.ownerName ~= "") then return end
             
-            local neighborhoodID
-            if C_Housing and C_Housing.GetCurrentNeighborhood then
-                neighborhoodID = C_Housing.GetCurrentNeighborhood()
-            end
-
             if not neighborhoodID then
-                print("HouseReview Error: Could not determine current neighborhood.")
+                print("HouseReview Error: Could not determine current neighborhood when map was opened.")
                 return
             end
 
@@ -373,10 +317,8 @@ function HouseReview_UpdateMap()
             end
             HouseReviewFrameTitle:SetText("Review for " .. ownerNameDisplay .. "'s Plot")
             
-            -- Load existing reviews via the new list updater
             HouseReview_UpdateReviewList()
             
-            -- Update Button State
             local playerHasReview = false
             local bnetAccountID
             if C_BattleNet and C_BattleNet.GetAccountInfo then
@@ -420,6 +362,19 @@ SlashCmdList["HOUSEREVIEW"] = function(msg)
         mapFrame:Hide()
         print("HouseReview: Map hidden.")
     else
+        local neighborhoodID
+        if C_Housing and C_Housing.GetCurrentNeighborhoodGUID then
+            neighborhoodID = C_Housing.GetCurrentNeighborhoodGUID()
+        end
+
+        if not neighborhoodID then
+            print("HouseReview: You must be in a housing neighborhood to show the map.")
+            return
+        end
+        
+        -- Cache the ID
+        HouseReview.currentNeighborhoodID = neighborhoodID
+        
         HouseReview_UpdateMap()
         mapFrame:Show()
         print("HouseReview: Map shown.")

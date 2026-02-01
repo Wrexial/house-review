@@ -2,7 +2,7 @@
 ## Title: House Review
 ## Notes: Allows players to review player housing.
 ## Author: Your Name
-## Version: 0.2
+## Version: 0.3
 ## SavedVariables: HouseReviewDB
 
 HouseReview.xml
@@ -10,3 +10,4 @@ HouseReview.lua
 Reviews.lua
 Map.lua
 Debug.lua
+MinimapButton.lua
