@@ -4,6 +4,8 @@
 ## Author: Your Name
 ## Version: 0.3
 ## SavedVariables: HouseReviewDB
+## OptionalDeps: LibDataBroker-1.1, LibDBIcon-1.0
+## IconTexture: Interface\AddOns\HouseReview\Media\minimap-icon.tga
 
 HouseReview.xml
 HouseReview.lua
