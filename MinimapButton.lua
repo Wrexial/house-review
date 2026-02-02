@@ -21,9 +21,9 @@ frame:SetScript("OnEvent", function(self, event)
                     if HouseReviewMapFrame:IsShown() then
                         HouseReviewMapFrame:Hide()
                     else
-                        local neighborhoodID
-                        if C_Housing and C_Housing.GetCurrentNeighborhood then
-                            neighborhoodID = C_Housing.GetCurrentNeighborhood()
+                         local neighborhoodID
+                        if C_Housing and C_Housing.GetCurrentNeighborhoodGUID then
+                            neighborhoodID = C_Housing.GetCurrentNeighborhoodGUID()
                         end
 
                         if not neighborhoodID then
@@ -33,7 +33,7 @@ frame:SetScript("OnEvent", function(self, event)
                         
                         -- Cache the ID
                         HouseReview.currentNeighborhoodID = neighborhoodID
-
+                        
                         HouseReview_UpdateMap()
                         HouseReviewMapFrame:Show()
                     end
