@@ -17,13 +17,7 @@ mapFrame:RegisterForDrag("LeftButton")
 mapFrame:SetScript("OnDragStart", mapFrame.StartMoving)
 mapFrame:SetScript("OnDragStop", mapFrame.StopMovingOrSizing)
 mapFrame:Hide()
-
-mapFrame:EnableKeyboard(true)
-mapFrame:SetScript("OnKeyDown", function(self, key)
-    if key == "ESCAPE" then
-        self:Hide()
-    end
-end)
+tinsert(UISpecialFrames, "HouseReviewMapFrame")
 
 -- Add a title to the map frame
 mapFrame.title = mapFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -184,76 +178,37 @@ function HouseReview_UpdateMap()
     local i = 0
     for plotID, plotInfo in pairs(plots) do
         i = i + 1
-        local icon = mapFrame.plotIcons[i]
-        if not icon then
-            icon = CreateFrame("Button", "HouseReviewPlotIcon" .. i, mapFrame)
-            icon:SetSize(20, 20)
-            icon:SetFrameLevel(mapFrame:GetFrameLevel() + 10)
-            
-            local tex = icon:CreateTexture(nil, "ARTWORK")
-            tex:SetAllPoints(icon)
-            tex:SetTexture(134393) 
-            icon.texture = tex
-            
-            local highlight = icon:CreateTexture(nil, "HIGHLIGHT")
-            highlight:SetAllPoints(icon)
-            highlight:SetTexture(134393)
-            highlight:SetAlpha(0.5)
-            highlight:SetBlendMode("ADD")
-            icon:SetHighlightTexture(highlight)
-            icon.highlight = highlight
-
-            mapFrame.plotIcons[i] = icon
-        end
-
-        if not icon.texture then
-             local regions = {icon:GetRegions()}
-             for _, r in ipairs(regions) do
-                 if r:GetDrawLayer() == "ARTWORK" then icon.texture = r; break end
-             end
-        end
-        if not icon.highlight then
-            icon.highlight = icon:GetHighlightTexture()
-        end
 
         local ownerType = plotInfo.ownerType or 0
         local isOwned = (ownerType > 0)
         local isPlayerHouse = (ownerType == 3)
         local isFriendHouse = (ownerType == 2)
 
-        if icon.texture then
-            if icon.highlight then
-                icon.highlight:SetTexture(134393)
-                icon.highlight:SetBlendMode("ADD")
-                icon.highlight:SetAlpha(0.5)
-            end
-
-            if isPlayerHouse then
-                icon.texture:SetVertexColor(0, 1, 0, 1)
+        local icon = mapFrame.plotIcons[i]
+        if not icon then
+            icon = CreateFrame("Button", "HouseReviewPlotIcon" .. i, mapFrame)
+            if isOwned then
                 icon:SetSize(20, 20)
-                if icon.highlight then 
-                    icon.highlight:SetVertexColor(0, 1, 0, 0.5)
-                end
-            elseif isFriendHouse then
-                icon.texture:SetVertexColor(0.2, 0.6, 1, 1)
-                icon:SetSize(20, 20)
-                if icon.highlight then 
-                    icon.highlight:SetVertexColor(0.2, 0.6, 1, 0.5)
-                end
-            elseif not isOwned then
-                icon.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
-                icon:SetSize(12, 12)
-                if icon.highlight then 
-                     icon.highlight:SetAlpha(0)
-                end
             else
-                icon.texture:SetVertexColor(1, 1, 1, 1)
-                icon:SetSize(20, 20)
-                if icon.highlight then 
-                    icon.highlight:SetVertexColor(1, 1, 1, 0.5)
-                end
+                icon:SetSize(10, 10)
             end
+            icon:SetFrameLevel(mapFrame:GetFrameLevel() + 10)
+            mapFrame.plotIcons[i] = icon
         end
+
+        local atlasName
+        if isPlayerHouse then
+            atlasName = "housing-map-plot-player-house"
+        elseif isFriendHouse then
+            atlasName = "housing-map-plot-occupied-friend"
+        elseif not isOwned then
+            atlasName = "housing-map-plot-unoccupied"
+        else
+            atlasName = "housing-map-plot-occupied"
+        end
+        
+        icon:SetNormalAtlas(atlasName)
+        icon:SetHighlightAtlas(atlasName .. "-highlight")
 
         local pos = plotInfo.mapPosition or plotInfo.MapPosition or plotInfo.position or plotInfo.location or plotInfo
         if pos and pos.mapPosition and type(pos.mapPosition) == "table" then
@@ -279,9 +234,9 @@ function HouseReview_UpdateMap()
             if x > 1 or y > 1 then
             end
             
-            local xPos = x * 750 + 25
-            local yPos = -y * 550 - 25
-            icon:SetPoint("TOPLEFT", xPos, yPos)
+            local xPos = x * mapFrame:GetWidth()
+            local yPos = -y * mapFrame:GetHeight()
+            icon:SetPoint("CENTER", mapFrame, "TOPLEFT", xPos, yPos)
             icon:Show()
         else
             icon:Hide()
